@@ -1,5 +1,0 @@
-matplotlib # Viz
-numpy
-# onnxruntime # CPU only
-onnxruntime-gpu # CUDA
-opencv-python

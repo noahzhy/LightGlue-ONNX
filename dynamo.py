@@ -197,5 +197,87 @@ def infer(
         viz.save_plot(output_path)
 
 
+@app.command()
+def trtexec(
+    model_path: Annotated[
+        Path,
+        typer.Argument(exists=True, dir_okay=False, readable=True, help="Path to ONNX model or built TensorRT engine."),
+    ],
+    left_image_path: Annotated[
+        Path, typer.Argument(exists=True, dir_okay=False, readable=True, help="Path to first image.")
+    ],
+    right_image_path: Annotated[
+        Path, typer.Argument(exists=True, dir_okay=False, readable=True, help="Path to second image.")
+    ],
+    extractor_type: Annotated[Extractor, typer.Argument()] = Extractor.superpoint,
+    output_path: Annotated[
+        Optional[Path],  # noqa: UP007
+        typer.Option(
+            "-o",
+            "--output",
+            dir_okay=False,
+            writable=True,
+            help="Path to save output matches figure. If not given, show visualization.",
+        ),
+    ] = None,
+    height: Annotated[
+        int,
+        typer.Option("-h", "--height", min=1, help="Height of input image at which to perform inference."),
+    ] = 1024,
+    width: Annotated[
+        int,
+        typer.Option("-w", "--width", min=1, help="Width of input image at which to perform inference."),
+    ] = 1024,
+    fp16: Annotated[bool, typer.Option("--fp16", help="Whether model uses FP16 precision.")] = False,
+    profile: Annotated[bool, typer.Option("--profile", help="Whether to profile model execution.")] = False,
+):
+    """Run pure TensorRT inference for LightGlue model using Polygraphy (requires TensorRT to be installed)."""
+    import numpy as np
+    from polygraphy.backend.common import BytesFromPath
+    from polygraphy.backend.trt import (
+        CreateConfig,
+        EngineFromBytes,
+        EngineFromNetwork,
+        NetworkFromOnnxPath,
+        SaveEngine,
+        TrtRunner,
+    )
+
+    from lightglue_dynamo import viz
+    from lightglue_dynamo.preprocessors import DISKPreprocessor, SuperPointPreprocessor
+
+    raw_images = [left_image_path, right_image_path]
+    raw_images = [cv2.resize(cv2.imread(str(i)), (width, height)) for i in raw_images]
+    images = np.stack(raw_images)
+    match extractor_type:
+        case Extractor.superpoint:
+            images = SuperPointPreprocessor.preprocess(images)
+        case Extractor.disk:
+            images = DISKPreprocessor.preprocess(images)
+    images = images.astype(np.float32)
+
+    # Build TensorRT engine
+    if model_path.suffix == ".engine":
+        build_engine = EngineFromBytes(BytesFromPath(str(model_path)))
+    else:  # .onnx
+        build_engine = EngineFromNetwork(NetworkFromOnnxPath(str(model_path)), config=CreateConfig(fp16=fp16))
+        build_engine = SaveEngine(build_engine, str(model_path.with_suffix(".engine")))
+
+    with TrtRunner(build_engine) as runner:
+        for _ in range(10 if profile else 1):  # Warm-up if profiling
+            outputs = runner.infer(feed_dict={"images": images})
+            keypoints, matches, mscores = outputs["keypoints"], outputs["matches"], outputs["mscores"]  # noqa: F841
+
+        if profile:
+            typer.echo(f"Inference Time: {runner.last_inference_time():.3f} s")
+
+    viz.plot_images(raw_images)
+    viz.plot_matches(keypoints[0][matches[..., 1]], keypoints[1][matches[..., 2]], color="lime", lw=0.2)
+    if output_path is None:
+        viz.plt.show()
+    else:
+        viz.save_plot(output_path)
+
+
 if __name__ == "__main__":
     app()

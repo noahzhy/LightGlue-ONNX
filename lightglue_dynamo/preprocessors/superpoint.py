@@ -1,7 +1,9 @@
 import numpy as np
 
+from .base import PreprocessorBase
 
-class SuperPointPreprocessor:
+
+class SuperPointPreprocessor(PreprocessorBase):
     @staticmethod
     def preprocess(image: np.ndarray) -> np.ndarray:
         """Preprocess image from cv2.imread, (..., H, W, 3), BGR."""

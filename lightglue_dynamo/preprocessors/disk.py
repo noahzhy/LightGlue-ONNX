@@ -1,7 +1,9 @@
 import numpy as np
 
+from .base import PreprocessorBase
 
-class DISKPreprocessor:
+
+class DISKPreprocessor(PreprocessorBase):
     @staticmethod
     def preprocess(image: np.ndarray) -> np.ndarray:
         """Preprocess image from cv2.imread, (..., H, W, 3), BGR."""
