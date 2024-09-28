@@ -12,7 +12,9 @@ Open Neural Network Exchange (ONNX) compatible implementation of [LightGlue: Loc
 
 > ✨ ***What's New***: End-to-end parallel dynamic batch size support. Read more in this [blog post](https://fabio-sim.github.io/blog/accelerating-lightglue-inference-onnx-runtime-tensorrt/).
 
-<p align="center"><a href="https://arxiv.org/abs/2306.13643"><img src="assets/easy_hard.jpg" alt="LightGlue figure" width=80%></a>
+<p align="center"><a href="https://fabio-sim.github.io/blog/accelerating-lightglue-inference-onnx-runtime-tensorrt/"><img src="assets/inference-comparison-speedup.svg" alt="Latency Comparison" width=90%></a><br><em>⏱️ Inference Time Comparison</em></p>
+
+<p align="center"><a href="https://arxiv.org/abs/2306.13643"><img src="assets/easy_hard.jpg" alt="LightGlue figure" width=80%></a></p>
 
 <details>
 <summary>Changelog</summary>
@@ -45,142 +47,60 @@ LightGlue Dynamo CLI
 ╭─ Commands ───────────────────────────────────────╮
 │ export   Export LightGlue to ONNX.               │
 │ infer    Run inference for LightGlue ONNX model. │
+| trtexec  Run pure TensorRT inference using       |
+|          Polygraphy.                             |
 ╰──────────────────────────────────────────────────╯
 ```
 
 Pass `--help` to see the available options for each command. The CLI will export the full extractor-matcher pipeline so that you don't have to worry about orchestrating intermediate steps.
 
----
-
-> [!NOTE]
-> *The following sections use the legacy scripts.*
-
-## 🔥 ONNX Export
-
-Prior to exporting the ONNX models, please install the [export requirements](/requirements-export.txt).
-
-To convert the DISK or SuperPoint and LightGlue models to ONNX, run [`export.py`](/export.py). We provide two types of ONNX exports: individual standalone models, and a combined end-to-end pipeline with the `--end2end` flag.
+## 📖 Example Commands
 
 <details>
-<summary>Export Example</summary>
+<summary>🔥 ONNX Export</summary>
 <pre>
-python export.py \
-  --img_size 512 \
-  --extractor_type superpoint \
-  --extractor_path weights/superpoint.onnx \
-  --lightglue_path weights/superpoint_lightglue.onnx \
-  --dynamic
-</pre>
-
-- Exporting individually can be useful when intermediate outputs can be cached or precomputed. On the other hand, the end-to-end pipeline can be more convenient.
-- Although dynamic axes have been specified, it is recommended to export your own ONNX model with the appropriate input image sizes of your use case.
-</details>
-
-### 🌠 ONNX Model Optimization 🎆
-
-Although ONNXRuntime automatically provides [some optimizations](https://onnxruntime.ai/docs/performance/model-optimizations/graph-optimizations.html) out of the box, certain specialized operator fusions (multi-head attention fusion) have to be applied manually. Run [`optimize.py`](/optimize.py) to fuse the attention nodes in LightGlue's ONNX graph. On a device with sufficient compute capability, ONNXRuntime (minimum version `1.16.0`) will dispatch the operator to FlashAttention-2, reducing the inference time for larger numbers of keypoints.
-
-<details>
-<summary>Optimize Example</summary>
-<pre>
-python optimize.py --input weights/superpoint_lightglue.onnx
+python dynamo.py export superpoint \
+  --num-keypoints 1024 \
+  -b 2 -h 1024 -w 1024 \
+  -o weights/superpoint_lightglue_pipeline.onnx
 </pre>
 </details>
 
-If you would like to try out inference right away, you can download ONNX models that have already been exported [here](https://github.com/fabio-sim/LightGlue-ONNX/releases).
-
-## ⚡ ONNX Inference
-
-With ONNX models in hand, one can perform inference on Python using ONNX Runtime (see [requirements-onnx.txt](/requirements-onnx.txt)).
-
-The LightGlue inference pipeline has been encapsulated into a runner class:
-
-```python
-from onnx_runner import LightGlueRunner, load_image, rgb_to_grayscale
-
-image0, scales0 = load_image("assets/sacre_coeur1.jpg", resize=512)
-image1, scales1 = load_image("assets/sacre_coeur2.jpg", resize=512)
-image0 = rgb_to_grayscale(image0)  # only needed for SuperPoint
-image1 = rgb_to_grayscale(image1)  # only needed for SuperPoint
-
-# Create ONNXRuntime runner
-runner = LightGlueRunner(
-    extractor_path="weights/superpoint.onnx",
-    lightglue_path="weights/superpoint_lightglue.onnx",
-    providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
-    # TensorrtExecutionProvider, OpenVINOExecutionProvider
-)
-
-# Run inference
-m_kpts0, m_kpts1 = runner.run(image0, image1, scales0, scales1)
-```
-
-Note that the output keypoints have already been rescaled back to the original image sizes.
-
-Alternatively, you can also run [`infer.py`](/infer.py).
-
 <details>
-<summary>Inference Example</summary>
+<summary>⚡ ONNX Runtime Inference (CUDA)</summary>
 <pre>
-python infer.py \
-  --img_paths assets/DSC_0410.JPG assets/DSC_0411.JPG \
-  --img_size 512 \
-  --lightglue_path weights/superpoint_lightglue.onnx \
-  --extractor_type superpoint \
-  --extractor_path weights/superpoint.onnx \
-  --viz
+python dynamo.py infer \
+  weights/superpoint_lightglue_pipeline.onnx \
+  assets/sacre_coeur1.jpg assets/sacre_coeur2.jpg \
+  superpoint \
+  -h 1024 -w 1024 \
+  -d cuda
 </pre>
 </details>
 
-See [OroChippw/LightGlue-OnnxRunner](https://github.com/OroChippw/LightGlue-OnnxRunner) for C++ inference.
-
-## 🚀 TensorRT Support
-
-TensorRT inference is partially supported via either *pure TensorRT* or the *TensorRT Execution Provider in ONNXRuntime*. Please follow the [official documentation](https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html) to install TensorRT. The exported ONNX models (whether standalone or end-to-end) must undergo [shape inference](https://github.com/microsoft/onnxruntime/blob/main/onnxruntime/python/tools/symbolic_shape_infer.py) for compatibility with TensorRT.
-
-For sample code using the TensorRT Python API, see [`trt_infer.py`](/trt_infer.py), which covers building the TensorRT engine and performing inference.
-
 <details>
-<summary>TensorRT via ONNXRuntime Example</summary>
+<summary>🚀 ONNX Runtime Inference (TensorRT)</summary>
 <pre>
-CUDA_MODULE_LOADING=LAZY && python infer.py \
-  --img_paths assets/DSC_0410.JPG assets/DSC_0411.JPG \
-  --lightglue_path weights/superpoint_lightglue_fused_fp16.onnx \
-  --extractor_type superpoint \
-  --extractor_path weights/superpoint.onnx \
-  --trt \
-  --viz
+python dynamo.py infer \
+  weights/superpoint_lightglue_pipeline.trt.onnx \
+  assets/sacre_coeur1.jpg assets/sacre_coeur2.jpg \
+  superpoint \
+  -h 1024 -w 1024 \
+  -d tensorrt --fp16
 </pre>
 </details>
 
-The first run will take longer because TensorRT needs to initialise the `.engine` and `.profile` files. It is recommended to pass a static number of keypoints when using TensorRT.
-
-## ⏱️ Inference Time Comparison
-
-In general, the fused ORT models can match the speed of the adaptive PyTorch model despite being non-adaptive (going through all attention layers). The PyTorch model provides more consistent latencies across the board, while the fused ORT models become slower at higher keypoint numbers due to a bottleneck in the `NonZero` operator. On the other hand, the TensorRT Execution Provider can reach very low latencies, but it is also inconsistent and unpredictable. See [EVALUATION.md](/evaluation/EVALUATION.md) for technical details.
-
-<p align="center"><a href="https://github.com/fabio-sim/LightGlue-ONNX/blob/main/evaluation/EVALUATION.md"><img src="assets/latency.png" alt="Latency Comparison" width=90%></a>
-
-## Caveats
-
-As the ONNX Runtime has limited support for features like dynamic control flow, certain configurations of the models cannot be exported to ONNX easily. These caveats are outlined below.
-
-### Feature Extraction
-
-- Only batch size `1` is currently supported. This limitation stems from the fact that different images in the same batch can have varying numbers of keypoints, leading to non-uniform (a.k.a. *ragged*) tensors.
-
-### LightGlue Keypoint Matching
-
-- Since dynamic control flow has limited support in ONNX tracing, by extension, early stopping and adaptive point pruning (the `depth_confidence` and `width_confidence` parameters) are also difficult to export to ONNX.
-- ~~Currently, the bottleneck for inference speed under ONNXRuntime is the `ArgMax` operator, which is placed on the CPU because it is unsupported by the CUDA Execution Provider.~~ Solved using TopK-trick. Now the bottleneck is the `NonZero` operator.
-
-Additionally, the outputs of the ONNX models differ slightly from the original PyTorch models (by a small error on the magnitude of `1e-6` to `1e-5` for the scores/descriptors). Although the cause is still unclear, this could be due to differing implementations or modified dtypes.
-
-Note that SuperPoint is under a non-commercial license.
-
-## Possible Future Work
-
-- **Support for dynamic control flow**: Investigating FX-graph/dynamo-based ONNX exporter instead of tracing/TorchScript-based ONNX exporter.
+<details>
+<summary>🧩 TensorRT Inference</summary>
+<pre>
+python dynamo.py trtexec \
+  weights/superpoint_lightglue_pipeline.trt.onnx \
+  assets/sacre_coeur1.jpg assets/sacre_coeur2.jpg \
+  superpoint \
+  -h 1024 -w 1024 \
+  --fp16
+</pre>
+</details>
 
 ## Credits
 If you use any ideas from the papers or code in this repo, please consider citing the authors of [LightGlue](https://arxiv.org/abs/2306.13643) and [SuperPoint](https://arxiv.org/abs/1712.07629) and [DISK](https://arxiv.org/abs/2006.13566). Lastly, if the ONNX versions helped you in any way, please also consider starring this repository.
