@@ -71,7 +71,7 @@ python dynamo.py export superpoint \
 <pre>
 python dynamo.py infer \
   weights/superpoint_lightglue_pipeline.onnx \
-  assets/sacre_coeur1.jpg assets/sacre_coeur2.jpg
+  assets/sacre_coeur1.jpg assets/sacre_coeur2.jpg \
   superpoint \
   -h 1024 -w 1024 \
   -d cuda
@@ -83,7 +83,7 @@ python dynamo.py infer \
 <pre>
 python dynamo.py infer \
   weights/superpoint_lightglue_pipeline.trt.onnx \
-  assets/sacre_coeur1.jpg assets/sacre_coeur2.jpg
+  assets/sacre_coeur1.jpg assets/sacre_coeur2.jpg \
   superpoint \
   -h 1024 -w 1024 \
   -d tensorrt --fp16
@@ -95,7 +95,7 @@ python dynamo.py infer \
 <pre>
 python dynamo.py trtexec \
   weights/superpoint_lightglue_pipeline.trt.onnx \
-  assets/sacre_coeur1.jpg assets/sacre_coeur2.jpg
+  assets/sacre_coeur1.jpg assets/sacre_coeur2.jpg \
   superpoint \
   -h 1024 -w 1024 \
   --fp16
