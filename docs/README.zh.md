@@ -1,133 +1,108 @@
-<div align="right"> <a href="https://github.com/fabio-sim/LightGlue-ONNX">English</a> | 简体中文</div>
+<div align="right"> <a href="https://github.com/fabio-sim/LightGlue-ONNX">English</a> | 简体中文 | <a href="https://github.com/fabio-sim/LightGlue-ONNX/blob/main/docs/README.ja.md">日本語</a></div>
 
 [![ONNX](https://img.shields.io/badge/ONNX-grey)](https://onnx.ai/)
 [![TensorRT](https://img.shields.io/badge/TensorRT-76B900)](https://developer.nvidia.com/tensorrt)
 [![GitHub Repo stars](https://img.shields.io/github/stars/fabio-sim/LightGlue-ONNX)](https://github.com/fabio-sim/LightGlue-ONNX/stargazers)
 [![GitHub all releases](https://img.shields.io/github/downloads/fabio-sim/LightGlue-ONNX/total)](https://github.com/fabio-sim/LightGlue-ONNX/releases)
+[![Blog](https://img.shields.io/badge/Blog-blue)](https://fabio-sim.github.io/blog/accelerating-lightglue-inference-onnx-runtime-tensorrt/)
 
 # LightGlue ONNX
 
-支持Open Neural Network Exchange (ONNX)的[LightGlue: Local Feature Matching at Light Speed](https://github.com/cvg/LightGlue)实施。ONNX格式支持不同平台之间的互操作性，并支持多个执行提供程序，同时消除了Python特定的依赖项，比如PyTorch。支持TensorRT和OpenVINO。
+兼容 Open Neural Network Exchange (ONNX) 的 [LightGlue: Local Feature Matching at Light Speed](https://github.com/cvg/LightGlue) 实现。ONNX 模型格式支持跨平台互操作性，支持多种执行提供程序，并消除了诸如 PyTorch 之类的 Python 特定依赖。支持 TensorRT 和 OpenVINO。
 
-> ✨ ***新增功能 - 2023年10月4日:*** Fused LightGlue ONNX模型，通过`onnxruntime>=1.16.0`支持FlashAttention-2。
+> ✨ ***更新内容***：支持端到端并行动态批量大小。阅读更多内容，请查看这篇[博客文章](https://fabio-sim.github.io/blog/accelerating-lightglue-inference-onnx-runtime-tensorrt/)。
 
-<p align="center"><a href="https://arxiv.org/abs/2306.13643"><img src="../assets/easy_hard.jpg" alt="LightGlue figure" width=80%></a>
+<p align="center"><a href="https://fabio-sim.github.io/blog/accelerating-lightglue-inference-onnx-runtime-tensorrt/"><img src="../assets/inference-comparison-speedup.svg" alt="延迟对比" width=90%></a><br><em>⏱️ 推理时间对比</em></p>
 
-<details>
-<summary>更新</summary>
-
-- **2023年11月02日**: 使用TopK换ArgMax比较快。
-- **2023年10月27日**: Kornia支持LightGlue-ONNX。
-- **2023年10月4日**: Multihead-attention fusion。
-- **2023年7月19日**: 支持TensorRT。
-- **2023年7月13日**: 支持FlashAttention。
-- **2023年7月11日**: 支持混合精度。
-- **2023年7月4日**: 加了运行时间比较。
-- **2023年7月1日**: 支持特征提取`max_num_keypoints`。
-- **2023年6月30日**: 支持DISK特征提取。
-- **2023年6月28日**: 加了端到端SuperPoint+LightGlue转换。
-</details>
-
-## 🔥 ONNX格式转换
-
-在转换ONNX模型之前，请安装原始LightGlue的[export requirements](/requirements-export.txt)。
-
-将DISK或SuperPoint和LightGlue模型转换为ONNX格式，请运行[`export.py`](/export.py)。提供了两种类型的ONNX转换：独立模型和组合模型。
+<p align="center"><a href="https://arxiv.org/abs/2306.13643"><img src="../assets/easy_hard.jpg" alt="LightGlue 图示" width=80%></a></p>
 
 <details>
-<summary>转换例子</summary>
-<pre>
-python export.py \
-  --img_size 512 \
-  --extractor_type superpoint \
-  --extractor_path weights/superpoint.onnx \
-  --lightglue_path weights/superpoint_lightglue.onnx \
-  --dynamic
-</pre>
+<summary>更新日志</summary>
+
+- **2024年7月17日**：支持端到端并行动态批量大小。重构脚本用户体验。添加[博客文章](https://fabio-sim.github.io/blog/accelerating-lightglue-inference-onnx-runtime-tensorrt/)。
+- **2023年11月2日**：引入 TopK-trick 来优化 ArgMax，提升约 30% 的速度。
+- **2023年10月4日**：通过 `onnxruntime>=1.16.0` 支持 FlashAttention-2 的 LightGlue ONNX 模型融合，长序列推理速度提升高达 80%。
+- **2023年10月27日**：LightGlue-ONNX 被添加到 [Kornia](https://kornia.readthedocs.io/en/latest/feature.html#kornia.feature.OnnxLightGlue)！
+- **2023年10月4日**：多头注意力融合优化。
+- **2023年7月19日**：添加对 TensorRT 的支持。
+- **2023年7月13日**：添加 Flash Attention 支持。
+- **2023年7月11日**：添加混合精度支持。
+- **2023年7月4日**：添加推理时间对比。
+- **2023年7月1日**：添加 `max_num_keypoints` 提取器支持。
+- **2023年6月30日**：添加对 DISK 提取器的支持。
+- **2023年6月28日**：添加端到端 SuperPoint+LightGlue 导出及推理管道。
 </details>
 
-### 🌠 ONNX模型优化 🎆
+## ⭐ ONNX 导出与推理
 
-尽管ONNXRuntime自动提供开箱即用的[一些优化](https://onnxruntime.ai/docs/performance/model-optimizations/graph-optimizations.html)，但某些专门的算子融合（multi-head attention fusion）必须手动应用。请运行[`optimize.py`](/optimize.py)。在具有足够计算能力的设备上，ONNXRuntime（最低版本`1.16.0`）会将算子分派给FlashAttention-2，从而减少大量关键点的推理时间。
+我们提供了一个 [typer](https://github.com/tiangolo/typer) CLI [`dynamo.py`](/dynamo.py)，用于轻松导出 LightGlue 为 ONNX 模型，并使用 ONNX Runtime 进行推理。如果你希望立即尝试推理，可以从[此处](https://github.com/fabio-sim/LightGlue-ONNX/releases)下载已导出的 ONNX 模型。
 
-<details>
-<summary>优化例子</summary>
-<pre>
-python optimize.py --input weights/superpoint_lightglue.onnx
-</pre>
-</details>
+```shell
+$ python dynamo.py --help
 
-如果您想立即尝试ONNX运行，可以下载已转换的[ONNX模型](https://github.com/fabio-sim/LightGlue-ONNX/releases)。
+Usage: dynamo.py [OPTIONS] COMMAND [ARGS]...
 
-## ⚡ ONNX推理
+LightGlue Dynamo CLI
 
-有了ONNX模型，就可以使用ONNX Runtime进行推理(请先安装[requirements-onnx.txt](/requirements-onnx.txt))。
-
-```python
-from onnx_runner import LightGlueRunner, load_image, rgb_to_grayscale
-
-image0, scales0 = load_image("assets/sacre_coeur1.jpg", resize=512)
-image1, scales1 = load_image("assets/sacre_coeur2.jpg", resize=512)
-image0 = rgb_to_grayscale(image0)  # only needed for SuperPoint
-image1 = rgb_to_grayscale(image1)  # only needed for SuperPoint
-
-# Create ONNXRuntime runner
-runner = LightGlueRunner(
-    extractor_path="weights/superpoint.onnx",
-    lightglue_path="weights/superpoint_lightglue.onnx",
-    providers=["CUDAExecutionProvider", "CPUExecutionProvider"],
-    # TensorrtExecutionProvider, OpenVINOExecutionProvider
-)
-
-# Run inference
-m_kpts0, m_kpts1 = runner.run(image0, image1, scales0, scales1)
+╭─ 命令 ───────────────────────────────────────╮
+│ export   导出 LightGlue 为 ONNX 模型。        │
+│ infer    使用 LightGlue ONNX 模型进行推理。   │
+| trtexec  使用 Polygraphy 进行纯 TensorRT 推理 |
+╰──────────────────────────────────────────────╯
 ```
 
-请注意，被输出的特征点已经换回原来的图像大小了。
+使用 `--help` 参数可以查看每个命令的可用选项。CLI 将导出完整的提取器-匹配器管道，因此你不必担心中间步骤的协调。
 
-您也可以运行[`infer.py`](/infer.py)。
+## 📖 示例命令
 
 <details>
-<summary>推理例子</summary>
+<summary>🔥 ONNX 导出</summary>
 <pre>
-python infer.py \
-  --img_paths assets/DSC_0410.JPG assets/DSC_0411.JPG \
-  --img_size 512 \
-  --lightglue_path weights/superpoint_lightglue.onnx \
-  --extractor_type superpoint \
-  --extractor_path weights/superpoint.onnx \
-  --viz
+python dynamo.py export superpoint \
+  --num-keypoints 1024 \
+  -b 2 -h 1024 -w 1024 \
+  -o weights/superpoint_lightglue_pipeline.onnx
 </pre>
 </details>
 
-## 🚀 TensorRT
-
-TensorRT推理使用ONNXRuntime的TensorRT Execution Provider。请先安装[TensorRT](https://docs.nvidia.com/deeplearning/tensorrt/install-guide/index.html)。
-
 <details>
-<summary>TensorRT例子</summary>
+<summary>⚡ ONNX Runtime 推理 (CUDA)</summary>
 <pre>
-CUDA_MODULE_LOADING=LAZY && python infer.py \
-  --img_paths assets/DSC_0410.JPG assets/DSC_0411.JPG \
-  --lightglue_path weights/superpoint_lightglue_fused_fp16.onnx \
-  --extractor_type superpoint \
-  --extractor_path weights/superpoint.onnx \
-  --trt \
-  --viz
+python dynamo.py infer \
+  weights/superpoint_lightglue_pipeline.onnx \
+  assets/sacre_coeur1.jpg assets/sacre_coeur2.jpg \
+  superpoint \
+  -h 1024 -w 1024 \
+  -d cuda
 </pre>
 </details>
 
-第一次运行时，TensorRT需要一点时间始化`.engine`和`.profile`。建议使用TensorRT时传递恒定数量的关键点。
+<details>
+<summary>🚀 ONNX Runtime 推理 (TensorRT)</summary>
+<pre>
+python dynamo.py infer \
+  weights/superpoint_lightglue_pipeline.trt.onnx \
+  assets/sacre_coeur1.jpg assets/sacre_coeur2.jpg \
+  superpoint \
+  -h 1024 -w 1024 \
+  -d tensorrt --fp16
+</pre>
+</details>
 
-## 推理时间比较
+<details>
+<summary>🧩 TensorRT 推理</summary>
+<pre>
+python dynamo.py trtexec \
+  weights/superpoint_lightglue_pipeline.trt.onnx \
+  assets/sacre_coeur1.jpg assets/sacre_coeur2.jpg \
+  superpoint \
+  -h 1024 -w 1024 \
+  --fp16
+</pre>
+</details>
 
-一般来说，自适应PyTorch模型提供了更一致的全面延迟，而融合的ORT模型由于`NonZero`运算符的瓶颈，在关键点数量较高时变得更慢。 另一方面，TensorRT Execution Provider可以达到非常低的延迟，但它也是不一致且不可预测的。请参阅[EVALUATION.md](/evaluation/EVALUATION.md)。
-
-<p align="center"><a href="https://github.com/fabio-sim/LightGlue-ONNX/blob/main/evaluation/EVALUATION.md"><img src="../assets/latency.png" alt="Latency Comparison" width=80%></a>
-
-## 引用
-
-如果使用这项目的代码或想法，请引用原本作者的论文：[LightGlue](https://arxiv.org/abs/2306.13643)，[SuperPoint](https://arxiv.org/abs/1712.07629)，[DISK](https://arxiv.org/abs/2006.13566)。最后，如果本项目的ONNX版以任何方式帮助了您，也请给个star。
+## 致谢
+如果您在论文或代码中使用了本仓库中的任何想法，请考虑引用 [LightGlue](https://arxiv.org/abs/2306.13643)、[SuperPoint](https://arxiv.org/abs/1712.07629) 和 [DISK](https://arxiv.org/abs/2006.13566) 的作者。此外，如果 ONNX 版本对您有所帮助，请考虑为此仓库加星。
 
 ```txt
 @inproceedings{lindenberger23lightglue,
