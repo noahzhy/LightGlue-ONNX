@@ -101,6 +101,18 @@ python dynamo.py trtexec \
 </pre>
 </details>
 
+<details>
+<summary>🟣 ONNX Runtime 推論 (OpenVINO)</summary>
+<pre>
+python dynamo.py infer \
+  weights/superpoint_lightglue_pipeline.onnx \
+  assets/sacre_coeur1.jpg assets/sacre_coeur2.jpg \
+  superpoint \
+  -h 512 -w 512 \
+  -d openvino
+</pre>
+</details>
+
 ## クレジット
 もし本リポジトリのコードや論文のアイデアを使用した場合は、[LightGlue](https://arxiv.org/abs/2306.13643)、[SuperPoint](https://arxiv.org/abs/1712.07629)、および [DISK](https://arxiv.org/abs/2006.13566) の著者を引用することを検討してください。また、ONNX バージョンが役に立った場合は、このリポジトリにスターを付けていただけると幸いです。
 
