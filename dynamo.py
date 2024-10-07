@@ -183,6 +183,8 @@ def infer(
                 },
             ),
         )
+    elif device == InferenceDevice.openvino:
+        providers.insert(0, ("OpenVINOExecutionProvider", {}))
 
     session = ort.InferenceSession(model_path, session_options, providers)
 

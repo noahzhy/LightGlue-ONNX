@@ -6,6 +6,7 @@ class InferenceDevice(StrEnum):
     cpu = auto()
     cuda = auto()
     tensorrt = auto()
+    openvino = auto()
 
 
 class Extractor(StrEnum):
