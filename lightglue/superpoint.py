@@ -131,8 +131,15 @@ class SuperPoint(Extractor):
         self.convDa = nn.Conv2d(c4, c5, kernel_size=3, stride=1, padding=1)
         self.convDb = nn.Conv2d(c5, self.conf.descriptor_dim, kernel_size=1, stride=1, padding=0)
 
-        url = "https://github.com/cvg/LightGlue/releases/download/v0.1_arxiv/superpoint_v1.pth"
-        self.load_state_dict(torch.hub.load_state_dict_from_url(url))
+        # url = "https://github.com/cvg/LightGlue/releases/download/v0.1_arxiv/superpoint_v1.pth"
+        # self.load_state_dict(torch.hub.load_state_dict_from_url(url))
+
+        url = "/Users/haoyu/clobotics/LightGlue-ONNX/superpoint_v1.pth"
+        # load if url is start with http
+        if url.startswith("http"):
+            self.load_state_dict(torch.hub.load_state_dict_from_url(url))
+        else:
+            self.load_state_dict(torch.load(url))
 
         if self.conf.max_num_keypoints is not None and self.conf.max_num_keypoints <= 0:
             raise ValueError("max_num_keypoints must be positive or None")

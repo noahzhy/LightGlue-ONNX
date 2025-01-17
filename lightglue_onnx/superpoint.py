@@ -140,8 +140,11 @@ class SuperPoint(nn.Module):
             c5, self.conf["descriptor_dim"], kernel_size=1, stride=1, padding=0
         )
 
-        url = "https://github.com/cvg/LightGlue/releases/download/v0.1_arxiv/superpoint_v1.pth"
-        self.load_state_dict(torch.hub.load_state_dict_from_url(url))
+        # url = "https://github.com/cvg/LightGlue/releases/download/v0.1_arxiv/superpoint_v1.pth"
+        # self.load_state_dict(torch.hub.load_state_dict_from_url(url))
+
+        url = "/Users/haoyu/clobotics/LightGlue-ONNX/superpoint_v1.pth"
+        self.load_state_dict(torch.load(url))
 
         mk = self.conf["max_num_keypoints"]
         if mk is not None and mk <= 0:

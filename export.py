@@ -46,14 +46,16 @@ def parse_args() -> argparse.Namespace:
         help="Whether to export an end-to-end pipeline instead of individual models.",
     )
     parser.add_argument(
-        "--dynamic", action="store_true", help="Whether to allow dynamic image sizes."
+        "--dynamic",
+        default=True,
+        action="store_true", help="Whether to allow dynamic image sizes."
     )
 
     # Extractor-specific args:
     parser.add_argument(
         "--max_num_keypoints",
         type=int,
-        default=None,
+        default=2048,
         required=False,
         help="Maximum number of keypoints outputted by the extractor.",
     )
@@ -69,8 +71,8 @@ def export_onnx(
     img0_path="assets/sacre_coeur1.jpg",
     img1_path="assets/sacre_coeur2.jpg",
     end2end=False,
-    dynamic=False,
-    max_num_keypoints=None,
+    dynamic=True,
+    max_num_keypoints=2048,
 ):
     # Handle args
     if isinstance(img_size, List) and len(img_size) == 1:
@@ -152,6 +154,7 @@ def export_onnx(
             "scores": {1: "num_keypoints"},
             "descriptors": {1: "num_keypoints"},
         }
+        # dynamic_axes = {}
         if dynamic:
             dynamic_axes.update({"image": {2: "height", 3: "width"}})
         else:
@@ -172,6 +175,8 @@ def export_onnx(
             dynamic_axes=dynamic_axes,
         )
 
+        quit()
+
         # Export LightGlue
         feats0, feats1 = extractor(image0[None]), extractor(image1[None])
         kpts0, scores0, desc0 = feats0
@@ -180,6 +185,7 @@ def export_onnx(
         kpts0 = normalize_keypoints(kpts0, image0.shape[1], image0.shape[2])
         kpts1 = normalize_keypoints(kpts1, image1.shape[1], image1.shape[2])
 
+        print(f"saving lightglue model on {lightglue_path}")
         torch.onnx.export(
             lightglue,
             (kpts0, kpts1, desc0, desc1),

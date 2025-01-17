@@ -74,7 +74,8 @@ class SuperPoint(nn.Module):
     Rabinovich. In CVPRW, 2019. https://arxiv.org/abs/1712.07629
     """
 
-    weights_url = "https://github.com/cvg/LightGlue/releases/download/v0.1_arxiv/superpoint_v1.pth"
+    # weights_url = "https://github.com/cvg/LightGlue/releases/download/v0.1_arxiv/superpoint_v1.pth"
+    weights_url = "/Users/haoyu/clobotics/LightGlue-ONNX/superpoint_v1.pth"
 
     def __init__(
         self,
@@ -114,7 +115,13 @@ class SuperPoint(nn.Module):
         self.convDa = nn.Conv2d(c4, c5, kernel_size=3, stride=1, padding=1)
         self.convDb = nn.Conv2d(c5, self.descriptor_dim, kernel_size=1, stride=1, padding=0)
 
-        self.load_state_dict(torch.hub.load_state_dict_from_url(self.weights_url))
+        # self.load_state_dict(torch.hub.load_state_dict_from_url(self.weights_url))
+        if self.weights_url.startswith("http"):
+            self.load_state_dict(torch.hub.load_state_dict_from_url(self.weights_url))
+        else:
+            # 
+            print("==== load from local")
+            self.load_state_dict(torch.load(self.weights_url))
 
     def forward(
         self,
